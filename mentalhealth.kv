@@ -1,0 +1,320 @@
+ScreenManager:
+    id: main_manager
+
+    MDScreen:
+        name: "main_nav_screen"
+        
+        MDBoxLayout:
+            orientation: 'vertical'
+            md_bg_color: [0.96, 0.97, 0.98, 1]
+
+            MDTopAppBar:
+                title: "Ментальный Баланс"
+                elevation: 2
+                md_bg_color: [0.0, 0.5, 0.5, 1]
+                left_action_items: [["lungs", lambda x: app.open_breath_practice_ui()]]
+                right_action_items: [["refresh", lambda x: app.refresh_profile_data_direct(main_manager)]]
+
+            MDBottomNavigation:
+                id: bottom_nav
+                selected_color_background: [0.0, 0.5, 0.5, 0.1]
+                text_color_active: [0.0, 0.5, 0.5, 1]
+                
+                # Вкладка 1: Каталог медитаций + Блок ИИ-рекомендаций
+                MDBottomNavigationItem:
+                    name: 'screen_home'
+                    text: 'Медитации'
+                    icon: 'spa'
+                    
+                    MDScrollView:
+                        do_scroll_x: False
+                        MDBoxLayout:
+                            orientation: 'vertical'
+                            padding: "20dp"
+                            spacing: "16dp"
+                            size_hint_y: None
+                            height: self.minimum_height
+
+                            # === ПРОДВИНУТЫЙ МОДУЛЬ АИ-РЕКОМЕНДАЦИЙ ===
+                            MDBoxLayout:
+                                id: ai_rec_box
+                                orientation: 'vertical'
+                                padding: "16dp"
+                                size_hint_y: None
+                                height: "110dp"
+                                md_bg_color: [1, 1, 1, 1]
+                                canvas.before:
+                                    Color:
+                                        rgba: [0.0, 0.5, 0.5, 0.4]
+                                    Line:
+                                        width: 1.5
+                                        rounded_rectangle: (self.x, self.y, self.width, self.height, 12, 12, 12, 12)
+                                
+                                MDLabel:
+                                    text: "🤖 Персональный ИИ-Ассистент:"
+                                    bold: True
+                                    font_style: "Subtitle2"
+                                    theme_text_color: "Custom"
+                                    text_color: [0.0, 0.5, 0.5, 1]
+                                    size_hint_y: None
+                                    height: "24dp"
+                                
+                                MDLabel:
+                                    id: ai_rec_lbl
+                                    text: "Сделайте замер настроения во вкладке для получения персональной рекомендации."
+                                    font_style: "Body2"
+                                    theme_text_color: "Secondary"
+
+                            MDLabel:
+                                text: "Рекомендуемые практики"
+                                font_style: "H6"
+                                bold: True
+                                size_hint_y: None
+                                height: "30dp"
+                                theme_text_color: "Secondary"
+
+                            # БЛОК ПРАКТИКИ 1
+                            MDBoxLayout:
+                                orientation: 'horizontal'
+                                padding: "16dp"
+                                spacing: "12dp"
+                                size_hint_y: None
+                                height: "100dp"
+                                md_bg_color: [1, 1, 1, 1]
+                                canvas.before:
+                                    Color:
+                                        rgba: [0.88, 0.9, 0.92, 1]
+                                    Line:
+                                        width: 1
+                                        rounded_rectangle: (self.x, self.y, self.width, self.height, 12, 12, 12, 12)
+
+                                MDIconButton:
+                                    icon: "weather-sunset"
+                                    theme_text_color: "Custom"
+                                    text_color: [0.9, 0.6, 0.2, 1]
+                                    user_font_size: "32sp"
+                                    pos_hint: {"center_y": .5}
+
+                                MDBoxLayout:
+                                    orientation: 'vertical'
+                                    spacing: "4dp"
+                                    pos_hint: {"center_y": .5}
+                                    MDLabel:
+                                        text: "Утреннее расслабление"
+                                        bold: True
+                                        font_style: "Subtitle1"
+                                    MDLabel:
+                                        text: "Длительность: 1 мин • Категория: Базовые"
+                                        font_style: "Caption"
+                                        theme_text_color: "Secondary"
+
+                                MDRaisedButton:
+                                    text: "СТАРТ"
+                                    md_bg_color: [0.0, 0.5, 0.5, 1]
+                                    pos_hint: {"center_y": .5}
+                                    on_release: app.start_meditation_session_ui(1, "Утреннее расслабление", 1)
+
+                            # БЛОК ПРАКТИКИ 2
+                            MDBoxLayout:
+                                orientation: 'horizontal'
+                                padding: "16dp"
+                                spacing: "12dp"
+                                size_hint_y: None
+                                height: "100dp"
+                                md_bg_color: [1, 1, 1, 1]
+                                canvas.before:
+                                    Color:
+                                        rgba: [0.88, 0.9, 0.92, 1]
+                                    Line:
+                                        width: 1
+                                        rounded_rectangle: (self.x, self.y, self.width, self.height, 12, 12, 12, 12)
+
+                                MDIconButton:
+                                    icon: "brain"
+                                    theme_text_color: "Custom"
+                                    text_color: [0.2, 0.6, 0.8, 1]
+                                    user_font_size: "32sp"
+                                    pos_hint: {"center_y": .5}
+
+                                MDBoxLayout:
+                                    orientation: 'vertical'
+                                    spacing: "4dp"
+                                    pos_hint: {"center_y": .5}
+                                    MDLabel:
+                                        text: "Снижение стресса"
+                                        bold: True
+                                        font_style: "Subtitle1"
+                                    MDLabel:
+                                        text: "Длительность: 15 мин • Категория: Тревога"
+                                        font_style: "Caption"
+                                        theme_text_color: "Secondary"
+
+                                MDRaisedButton:
+                                    text: "СТАРТ"
+                                    md_bg_color: [0.0, 0.5, 0.5, 1]
+                                    pos_hint: {"center_y": .5}
+                                    on_release: app.start_meditation_session_ui(2, "Снижение стресса", 15)
+
+                            # БЛОК ПРАКТИКИ 3
+                            MDBoxLayout:
+                                orientation: 'horizontal'
+                                padding: "16dp"
+                                spacing: "12dp"
+                                size_hint_y: None
+                                height: "100dp"
+                                md_bg_color: [1, 1, 1, 1]
+                                canvas.before:
+                                    Color:
+                                        rgba: [0.88, 0.9, 0.92, 1]
+                                    Line:
+                                        width: 1
+                                        rounded_rectangle: (self.x, self.y, self.width, self.height, 12, 12, 12, 12)
+
+                                MDIconButton:
+                                    icon: "bed-clock"
+                                    theme_text_color: "Custom"
+                                    text_color: [0.4, 0.3, 0.7, 1]
+                                    user_font_size: "32sp"
+                                    pos_hint: {"center_y": .5}
+
+                                MDBoxLayout:
+                                    orientation: 'vertical'
+                                    spacing: "4dp"
+                                    pos_hint: {"center_y": .5}
+                                    MDLabel:
+                                        text: "Глубокий сон"
+                                        bold: True
+                                        font_style: "Subtitle1"
+                                    MDLabel:
+                                        text: "Длительность: 20 мин • Категория: Сон"
+                                        font_style: "Caption"
+                                        theme_text_color: "Secondary"
+
+                                MDRaisedButton:
+                                    text: "СТАРТ"
+                                    md_bg_color: [0.0, 0.5, 0.5, 1]
+                                    pos_hint: {"center_y": .5}
+                                    on_release: app.start_meditation_session_ui(3, "Глубокий сон", 20)
+                # Вкладка 2: Трекер настроения
+                MDBottomNavigationItem:
+                    name: 'screen_tracker'
+                    text: 'Настроение'
+                    icon: 'emoticon-happy-outline'
+                    on_tab_press: app.refresh_profile_data_direct(main_manager)
+
+                    MDBoxLayout:
+                        orientation: 'vertical'
+                        padding: "20dp"
+                        spacing: "15dp"
+
+                        MDLabel:
+                            text: "Как вы себя чувствуете?"
+                            font_style: "H6"
+                            halign: "center"
+                            size_hint_y: None
+                            height: "40dp"
+
+                        MDBoxLayout:
+                            orientation: 'horizontal'
+                            spacing: "10dp"
+                            size_hint_y: None
+                            height: "50dp"
+                            pos_hint: {"center_x": .5}
+
+                            MDIconButton:
+                                icon: "numeric-1-circle"
+                                on_release: app.select_mood_score(1)
+
+                            MDIconButton:
+                                icon: "numeric-2-circle"
+                                on_release: app.select_mood_score(2)
+
+                            MDIconButton:
+                                icon: "numeric-3-circle"
+                                on_release: app.select_mood_score(3)
+
+                            MDIconButton:
+                                icon: "numeric-4-circle"
+                                on_release: app.select_mood_score(4)
+
+                            MDIconButton:
+                                icon: "numeric-5-circle"
+                                on_release: app.select_mood_score(5)
+
+                        MDTextField:
+                            id: mood_note_input
+                            hint_text: "Добавьте заметку к вашему состоянию..."
+                            mode: "rectangle"
+                            size_hint_y: None
+                            height: "50dp"
+
+                        MDRaisedButton:
+                            text: "СОХРАНИТЬ ЗАМЕР"
+                            md_bg_color: [0.0, 0.5, 0.5, 1]
+                            pos_hint: {"center_x": .5}
+                            on_release:
+                                app.save_mood_entry_from_ui(mood_note_input.text, main_manager)
+                                mood_note_input.text = ""
+
+                # Вкладка 3: Аналитический профиль и графики
+                MDBottomNavigationItem:
+                    name: 'screen_profile'
+                    text: 'Профиль'
+                    icon: 'account'
+                    # Вызов синхронизации текста И отрисовки графики на Canvas одновременно
+                    on_tab_press: 
+                        app.refresh_profile_data_direct(main_manager)
+                        app.draw_analytics_chart(main_manager)
+
+                    MDScrollView:
+                        do_scroll_x: False
+                        
+                        MDBoxLayout:
+                            orientation: 'vertical'
+                            padding: "20dp"
+                            spacing: "18dp"
+                            size_hint_y: None
+                            height: self.minimum_height
+
+                            MDLabel:
+                                id: ui_stats_count
+                                text: "Всего замеров: 0"
+                                font_style: "Subtitle1"
+                                bold: True
+                                size_hint_y: None
+                                height: "24dp"
+
+                            MDLabel:
+                                id: ui_stats_avg
+                                text: "Средний балл: 0.0"
+                                font_style: "Subtitle1"
+                                bold: True
+                                size_hint_y: None
+                                height: "24dp"
+
+                            # === Виджет подложки для динамического Canvas ===
+                            MDBoxLayout:
+                                id: chart_canvas_box
+                                size_hint_y: None
+                                height: "140dp"
+
+                            MDRaisedButton:
+                                text: "ЭКСПОРТ ИСТОРИИ В CSV"
+                                md_bg_color: [0.2, 0.6, 0.4, 1]
+                                pos_hint: {"center_x": .5}
+                                on_release: app.export_data_to_csv(main_manager)
+
+                            MDLabel:
+                                text: "История состояний:"
+                                font_style: "Body2"
+                                theme_text_color: "Secondary"
+                                size_hint_y: None
+                                height: "20dp"
+
+                            MDBoxLayout:
+                                orientation: 'vertical'
+                                size_hint_y: None
+                                height: ui_history_list.minimum_height
+                                
+                                MDList:
+                                    id: ui_history_list
