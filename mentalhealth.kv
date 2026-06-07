@@ -35,13 +35,13 @@ ScreenManager:
                             size_hint_y: None
                             height: self.minimum_height
 
-                            # === ПРОДВИНУТЫЙ МОДУЛЬ АИ-РЕКОМЕНДАЦИЙ ===
+                             # === ПРОДВИНУТЫЙ МОДУЛЬ АИ-РЕКОМЕНДАЦИЙ ===
                             MDBoxLayout:
                                 id: ai_rec_box
                                 orientation: 'vertical'
                                 padding: "16dp"
                                 size_hint_y: None
-                                height: "110dp"
+                                height: "115dp"
                                 md_bg_color: [1, 1, 1, 1]
                                 canvas.before:
                                     Color:
@@ -50,14 +50,27 @@ ScreenManager:
                                         width: 1.5
                                         rounded_rectangle: (self.x, self.y, self.width, self.height, 12, 12, 12, 12)
                                 
-                                MDLabel:
-                                    text: "🤖 Персональный ИИ-Ассистент:"
-                                    bold: True
-                                    font_style: "Subtitle2"
-                                    theme_text_color: "Custom"
-                                    text_color: [0.0, 0.5, 0.5, 1]
+                                # Интерактивная панель робота с динамической иконкой
+                                MDBoxLayout:
+                                    orientation: 'horizontal'
                                     size_hint_y: None
                                     height: "24dp"
+                                    spacing: "8dp"
+
+                                    MDIcon:
+                                        id: ai_rec_icon
+                                        icon: "robot"
+                                        theme_text_color: "Custom"
+                                        text_color: [0.0, 0.5, 0.5, 1]
+                                        size_hint_x: None
+                                        width: "24dp"
+
+                                    MDLabel:
+                                        text: "Персональный ИИ-Ассистент:"
+                                        bold: True
+                                        font_style: "Subtitle2"
+                                        theme_text_color: "Custom"
+                                        text_color: [0.0, 0.5, 0.5, 1]
                                 
                                 MDLabel:
                                     id: ai_rec_lbl
@@ -195,6 +208,22 @@ ScreenManager:
                                     md_bg_color: [0.0, 0.5, 0.5, 1]
                                     pos_hint: {"center_y": .5}
                                     on_release: app.start_meditation_session_ui(3, "Глубокий сон", 20)
+
+                            # === ФИЧА ДЛЯ ДИПЛОМА: ОТДЕЛЬНАЯ КНОПКА ОТКРЫТИЯ КОНСТРУКТОРА ПРАКТИК ===
+                            MDBoxLayout:
+                                orientation: 'vertical'
+                                padding: ["16dp", "10dp", "16dp", "10dp"]
+                                size_hint_y: None
+                                height: "70dp"
+                                
+                                MDRaisedButton:
+                                    text: "➕ КОНСТРУКТОР СОБСТВЕННЫХ ПРАКТИК"
+                                    md_bg_color: [0.0, 0.5, 0.5, 1]
+                                    pos_hint: {"center_x": .5}
+                                    size_hint_x: 1
+                                    # Вызываем наше отдельное окно, не ломая практику дыхания
+                                    on_release: app.open_add_meditation_window()
+
                 # Вкладка 2: Трекер настроения
                 MDBottomNavigationItem:
                     name: 'screen_tracker'
