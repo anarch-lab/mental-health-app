@@ -574,7 +574,7 @@ MDBoxLayout:
         except Exception as e:
             print(f"[Export Error] {e}")
 
-    # === КЛАССИЧЕСКИЙ СТАНДАРТНЫЙ ПЛЕЕР МЕДИТАЦИЙ ===
+# === КЛАССИЧЕСКИЙ СТАНДАРТНЫЙ ПЛЕЕР МЕДИТАЦИЙ ===
     def select_mood_score(self, score):
         self.selected_score = score
         print(f"[Mood Selected] Оценка: {score}")
@@ -613,9 +613,16 @@ MDBoxLayout:
         )
         self.popup.open()
         
-        sound_path = os.path.join(BASE_DIR, "meditation.mp3")
+        # === АВТОМАТИЧЕСКИЙ ФИКС ПЛЕЕРА ПОД .WAV ИЗ ПАПКИ AUDIO ===
+        file_to_load = f"med_{med_id}.wav" if med_id != 99 else "med_1.wav"
+        sound_path = os.path.join(BASE_DIR, "audio", file_to_load)
+        
         if os.path.exists(sound_path):
+            from kivy.core.audio import SoundLoader
             self.current_sound = SoundLoader.load(sound_path)
+            print(f"[ПЛЕЕР] Звуковой движок успешно подгрузил файл: {sound_path}")
+        else:
+            print(f"[ОШИБКА ПЛЕЕРА] Аудиофайл не найден по пути: {sound_path}")
 
     def toggle_timer(self):
         if not self.timer_active:
@@ -697,7 +704,7 @@ MDBoxLayout:
             self.add_meditation_popup.dismiss()
 
     def save_custom_meditation_to_library(self, title, filename, duration):
-        """Валидация полей и мгновенный запуск добавленного трека в твоем плеере"""
+        """Валидация полей, запись в SQLite и запуск добавленного трека в твоем плеере"""
         title = title.strip()
         filename = filename.strip()
         duration = duration.strip()
@@ -705,6 +712,20 @@ MDBoxLayout:
         if not title or not filename or not duration:
             print("Ошибка: Все поля ввода обязательны для заполнения!")
             return
+
+        try:
+            # ЖЁСТКАЯ ЗАПИСЬ КАСТОМНОЙ ПРАКТИКИ В ТВОЮ БАЗУ ДАННЫХ SQLITE
+            conn = sqlite3.connect(os.path.join(BASE_DIR, "mental_health.db"))
+            cursor = conn.cursor()
+            cursor.execute(
+                "INSERT INTO meditations (title, duration_min, is_custom) VALUES (?, ?, 1)",
+                (title, int(duration))
+            )
+            conn.commit()
+            conn.close()
+            print(f"[КОНСТРУКТОР] Практика '{title}' успешно вшита в SQLite базу данных!")
+        except Exception as e:
+            print(f"[КОНСТРУКТОР БД ОШИБКА] Не удалось сохранить запись: {e}")
 
         print(f"[Успешно добавлено] Практика: {title} ({duration} мин). Файл: {filename}")
         
@@ -787,6 +808,17 @@ MDBoxLayout:
         )
         self.breath_popup.open()
         
+        # === АВТОМАТИЧЕСКИЙ ФИКС ЗВУКА ИЗ ПАПКИ AUDIO ===
+        sound_path = os.path.join(BASE_DIR, "audio", "呼吸.wav")
+        if os.path.exists(sound_path):
+            from kivy.core.audio import SoundLoader
+            self.breath_sound = SoundLoader.load(sound_path)
+            if self.breath_sound:
+                self.breath_sound.play()
+        else:
+            print(f"[ОШИБКА АУДИО] Файл не найден: {sound_path}")
+        # ===============================================
+        
         self.breath_count = 3
         self.breath_phase = "PREPARE"
         
@@ -804,6 +836,7 @@ MDBoxLayout:
             self.time_accumulator += dt
             
             # Логика секундного обновления цифр
+
             if self.time_accumulator >= 1.0:
                 self.time_accumulator = 0.0
                 self.breath_count -= 1
