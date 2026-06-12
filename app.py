@@ -1,10 +1,17 @@
 import os
 import sqlite3
 import csv
+from kivy.resources import resource_add_path
 
-import os
-import sqlite3
-import csv
+# Автоматически находим папку, в которой лежит этот файл app.py
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# Привязываем универсальный путь к папке со звуками
+AUDIO_DIR = os.path.join(BASE_DIR, 'audio')
+resource_add_path(AUDIO_DIR)
+
+# Универсальный путь к базе данных в твоей папке проекта
+DB_PATH = os.path.join(BASE_DIR, 'mental_health.db')
 
 # 1. КОНФИГУРАЦИЯ ГРАФИЧЕСКОГО ДВИЖКА ДЛЯ WINDOWS
 os.environ['KIVY_GL_BACKEND'] = 'angle_sdl2'
@@ -19,10 +26,6 @@ from kivy.core.audio import SoundLoader
 from kivymd.uix.list import TwoLineListItem
 from kivy.properties import NumericProperty
 
-
-# Абсолютные пути проекта
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_NAME = os.path.join(BASE_DIR, "mental_health.db")
 
 # Статическая разметка Popup-плеера
 POPUP_KV = '''
@@ -92,12 +95,13 @@ MDBoxLayout:
             on_press: app.dismiss_confirm_popup()
 '''
 
-# === ФИЧА ДЛЯ ДИПЛОМА: ФИНАЛЬНАЯ РАЗМЕТКА ОКНА БИБЛИОТЕКИ МЕДИТАЦИЙ ===
+# === ФИЧА ДЛЯ ДИПЛОМА: ИСПРАВЛЕННАЯ КОНТРАСТНАЯ РАЗМЕТКА ОКНА КОНСТРУКТОРА ===
 ADD_MEDITATION_KV = '''
 MDBoxLayout:
     orientation: 'vertical'
     padding: "20dp"
     spacing: "12dp"
+    md_bg_color: [0.15, 0.15, 0.15, 1] # Делаем приятный графитовый фон окна
 
     MDLabel:
         text: "Добавление новой практики"
@@ -105,22 +109,33 @@ MDBoxLayout:
         halign: "center"
         size_hint_y: None
         height: "35dp"
+        theme_text_color: "Custom"
+        text_color: [1, 1, 1, 1] # Четкий белый заголовок
 
     MDTextField:
         id: new_title_field
         hint_text: "Название медитации (например: Вечерний сон)"
         mode: "rectangle"
+        text_color_normal: [0.9, 0.9, 0.9, 1] # Светло-серый текст при вводе
+        text_color_focus: [1, 1, 1, 1] # Белый текст при фокусе
+        hint_text_color_normal: [0.6, 0.6, 0.6, 1] # Заметная подсказка
 
     MDTextField:
         id: new_file_field
-        hint_text: "Имя файла в audio/ (например: night.mp3)"
+        hint_text: "Имя файла в audio/ (например: night.wav)" # Исправили подсказку на .wav
         mode: "rectangle"
+        text_color_normal: [0.9, 0.9, 0.9, 1]
+        text_color_focus: [1, 1, 1, 1]
+        hint_text_color_normal: [0.6, 0.6, 0.6, 1]
 
     MDTextField:
         id: new_duration_field
         hint_text: "Длительность (в минутах)"
         input_filter: "int"
         mode: "rectangle"
+        text_color_normal: [0.9, 0.9, 0.9, 1]
+        text_color_focus: [1, 1, 1, 1]
+        hint_text_color_normal: [0.6, 0.6, 0.6, 1]
 
     MDBoxLayout:
         orientation: 'horizontal'
@@ -133,7 +148,6 @@ MDBoxLayout:
             text: "ДОБАВИТЬ"
             md_bg_color: [0.0, 0.5, 0.5, 1]
             on_release: 
-                # Вызываем твой готовый метод из низа app.py
                 app.save_custom_meditation_to_library(new_title_field.text, new_file_field.text, new_duration_field.text)
 
         MDFlatButton:
@@ -144,12 +158,22 @@ MDBoxLayout:
 
 
 
+
 # 3. ЛОГИКА БАЗЫ ДАННЫХ SQLITE
 def init_db():
-    conn = sqlite3.connect(DB_NAME)
+    # Используем универсальный DB_PATH вместо старого DB_NAME
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute('''CREATE TABLE IF NOT EXISTS Users (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT)''')
-    cursor.execute('''CREATE TABLE IF NOT EXISTS Meditations (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, duration_min INTEGER, category TEXT)''')
+    
+    # ДОБАВИЛИ КОРРЕКТНОЕ ПОЛЕ audio_file ДЛЯ ТВОИХ WAV ТРЕКОВ
+    cursor.execute('''CREATE TABLE IF NOT EXISTS Meditations (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT, 
+                        title TEXT, 
+                        duration_min INTEGER, 
+                        category TEXT,
+                        audio_file TEXT)''')
+                        
     cursor.execute('''CREATE TABLE IF NOT EXISTS Mood_Tracker (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, score INTEGER, note TEXT, date_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
     cursor.execute('''CREATE TABLE IF NOT EXISTS Sessions (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, meditation_id INTEGER, date_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
     
@@ -161,17 +185,18 @@ def init_db():
     cursor.execute("SELECT COUNT(*) FROM Meditations")
     med_count = cursor.fetchone()[0]
     if med_count == 0:
+        # Прописываем имена твоих WAV файлов для стандартных практик
         meditations = [
-            ('Утреннее расслабление', 1, 'Базовые'),  
-            ('Снижение стресса', 15, 'Тревога'),
-            ('Глубокий сон', 20, 'Сон')
+            ('Утреннее расслабление', 1, 'Базовые', 'morning.wav'),  
+            ('Снижение стресса', 15, 'Тревога', 'anti_stress.wav'),
+            ('Глубокий сон', 20, 'Сон', 'deep_sleep.wav')
         ]
-        cursor.executemany("INSERT INTO Meditations (title, duration_min, category) VALUES (?, ?, ?)", meditations)
+        cursor.executemany("INSERT INTO Meditations (title, duration_min, category, audio_file) VALUES (?, ?, ?, ?)", meditations)
     conn.commit()
     conn.close()
 
 def add_mood_record(score, note):
-    conn = sqlite3.connect(DB_NAME)
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("SELECT id FROM Users LIMIT 1")
     user_row = cursor.fetchone()
@@ -181,7 +206,7 @@ def add_mood_record(score, note):
     conn.close()
 
 def log_meditation_session(med_id):
-    conn = sqlite3.connect(DB_NAME)
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("SELECT id FROM Users LIMIT 1")
     user_row = cursor.fetchone()
@@ -191,7 +216,7 @@ def log_meditation_session(med_id):
     conn.close()
 
 def get_mood_stats():
-    conn = sqlite3.connect(DB_NAME)
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("SELECT COUNT(score), AVG(score) FROM Mood_Tracker")
     row = cursor.fetchone()
@@ -203,7 +228,7 @@ def get_mood_stats():
     return count, avg_score
 
 def get_mood_history():
-    conn = sqlite3.connect(DB_NAME)
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("SELECT score, note, date_time FROM Mood_Tracker ORDER BY id DESC")
     data = cursor.fetchall()
@@ -214,8 +239,15 @@ def get_mood_history():
 # 4. КЛАССЫ ЭКРАНОВ
 class HomeScreen(MDScreen):
     def on_enter(self, *args):
-        """Автоматическая проверка при входе на экран медитаций"""
-        # Если кнопки «Добавить свою практику» еще нет на экране, мы создаем её программно на Python
+        """Автоматическая проверка и динамическая загрузка при входе на экран медитаций"""
+        from kivy.app import App
+        app = App.get_running_app()
+        
+        # 1. ПРИНУДИТЕЛЬНО ОБНОВЛЯЕМ СПИСОК ПРАКТИК ИЗ БАЗЫ ДАННЫХ ПРИ ВХОДЕ
+        if hasattr(app, 'load_meditations_to_ui'):
+            app.load_meditations_to_ui()
+
+        # 2. Логика программного создания кнопки «+» (твой оригинальный код)
         if not hasattr(self, 'add_custom_btn_created'):
             from kivymd.uix.button import MDFloatingActionButton
             
@@ -229,8 +261,7 @@ class HomeScreen(MDScreen):
                 size=("56dp", "56dp")
             )
             # Привязываем клик на кнопку к открытию нашего нового отдельного окна
-            from kivy.app import App
-            add_btn.bind(on_release=lambda x: App.get_running_app().open_add_meditation_window())
+            add_btn.bind(on_release=lambda x: app.open_add_meditation_window())
             
             # Добавляем её на живой экран медитаций поверх всей твоей готовой верстки
             self.add_widget(add_btn)
@@ -576,12 +607,16 @@ MDBoxLayout:
 
 # === КЛАССИЧЕСКИЙ СТАНДАРТНЫЙ ПЛЕЕР МЕДИТАЦИЙ ===
     def select_mood_score(self, score):
+        # Используем self.selected_score для совместимости с твоим кодом
         self.selected_score = score
         print(f"[Mood Selected] Оценка: {score}")
 
     def save_mood_entry_from_ui(self, note_text, root_manager):
-        if self.selected_score is None:
+        if not hasattr(self, 'selected_score') or self.selected_score is None:
+            print("[НАСТРОЕНИЕ] Ошибка: Сначала выберите смайлик!")
             return
+            
+        # Пишем в базу данных
         add_mood_record(self.selected_score, note_text)
         self.refresh_profile_data_direct(root_manager)
         
@@ -613,16 +648,33 @@ MDBoxLayout:
         )
         self.popup.open()
         
-        # === АВТОМАТИЧЕСКИЙ ФИКС ПЛЕЕРА ПОД .WAV ИЗ ПАПКИ AUDIO ===
-        file_to_load = f"med_{med_id}.wav" if med_id != 99 else "med_1.wav"
-        sound_path = os.path.join(BASE_DIR, "audio", file_to_load)
+        # === УМНЫЙ ПОДБОР ФАЙЛА ИЗ SQLITE (БЕЗ КОСТЫЛЕЙ) ===
+        audio_filename = None
+        try:
+            # Вытягиваем точное имя .wav файла из базы по ID медитации
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            cursor.execute("SELECT audio_file FROM Meditations WHERE id = ?", (med_id,))
+            row = cursor.fetchone()
+            conn.close()
+            if row:
+                audio_filename = row[0]
+        except Exception as db_err:
+            print(f"[БАЗА ДАННЫХ] Не удалось узнать имя файла для медитации: {db_err}")
+
+        # Если в базе пусто (старая запись), делаем откат на имя по умолчанию
+        if not audio_filename:
+            audio_filename = f"med_{med_id}.wav"
+
+        # Формируем универсальный путь через AUDIO_DIR
+        sound_path = os.path.join(AUDIO_DIR, audio_filename)
         
         if os.path.exists(sound_path):
             from kivy.core.audio import SoundLoader
             self.current_sound = SoundLoader.load(sound_path)
-            print(f"[ПЛЕЕР] Звуковой движок успешно подгрузил файл: {sound_path}")
+            print(f"[ПЛЕЕР] Успешно загружен файл из базы: {audio_filename}")
         else:
-            print(f"[ОШИБКА ПЛЕЕРА] Аудиофайл не найден по пути: {sound_path}")
+            print(f"[ОШИБКА ПЛЕЕРА] Файл не найден по пути: {sound_path}")
 
     def toggle_timer(self):
         if not self.timer_active:
@@ -684,6 +736,18 @@ MDBoxLayout:
         if hasattr(self, 'confirm_popup') and self.confirm_popup:
             self.confirm_popup.dismiss()
 
+
+    # === МЕТОДЫ ДЛЯ ДИПЛОМА: АВТОЗАПУСК ПРИ СТАРТЕ ===
+    def on_start(self):
+        """Срабатывает автоматически при запуске приложения"""
+        # Сначала инициализируем базу данных (твоя стандартная функция)
+        init_db()
+        
+        # Даем KivyMD микропаузу в 0.3 секунды, чтобы он успел собрать интерфейс,
+        # и пробуем сразу подгрузить кастомные практики из SQLite
+        from kivy.clock import Clock
+        Clock.schedule_once(lambda dt: self.load_meditations_to_ui(), 0.3)
+
     # === МЕТОДЫ ДЛЯ ДИПЛОМА: ОТДЕЛЬНОЕ ОКНО КОНСТРУКТОРА ПРАКТИК ===
     def open_add_meditation_window(self):
         """Программный вызов отдельного окна добавления медитаций"""
@@ -702,6 +766,7 @@ MDBoxLayout:
         """Закрытие окна добавления"""
         if hasattr(self, 'add_meditation_popup') and self.add_meditation_popup:
             self.add_meditation_popup.dismiss()
+
 
     def save_custom_meditation_to_library(self, title, filename, duration):
         """Валидация полей, запись в SQLite и запуск добавленного трека в твоем плеере"""
@@ -860,7 +925,7 @@ MDBoxLayout:
                         self.breath_phase = "ВДОХ"
                         self.breath_popup_content.ids.breath_instruction.text = "Сделайте ВДОХ"
 
-            # АНИМАЦИЯ КРУГА: Меняем circle_radius, Kivy сам мгновенно перерисует Ellipse
+# АНИМАЦИЯ КРУГА: Меняем circle_radius, Kivy сам мгновенно перерисует Ellipse
             if self.breath_phase == "ВДОХ":
                 if self.circle_radius < 180.0:
                     self.circle_radius += 1.5
@@ -886,10 +951,12 @@ MDBoxLayout:
         popup_content = Builder.load_string(ADD_MEDITATION_KV)
         self.add_meditation_content = popup_content
         from kivy.uix.popup import Popup
+        
+        # Сделали размер окна чуть больше, чтобы красиво влезли наши новые контрастные поля
         self.add_meditation_popup = Popup(
             title="Конструктор библиотеки медитаций",
             content=popup_content,
-            size_hint=(0.85, 0.55),
+            size_hint=(0.9, 0.65), 
             auto_dismiss=True
         )
         self.add_meditation_popup.open()
@@ -899,18 +966,187 @@ MDBoxLayout:
             self.add_meditation_popup.dismiss()
 
     def save_custom_meditation_to_library(self, title, filename, duration):
+        """Сохранение кастомной медитации напрямую в SQLite с поддержкой WAV на любой платформе"""
         title = title.strip()
         filename = filename.strip()
         duration = duration.strip()
 
+        # 1. Валидация полей
         if not title or not filename or not duration:
-            print("Ошибка: Все поля ввода обязательны для заполнения!")
+            print("[КОНСТРУКТОР] Ошибка: Все поля ввода обязательны для заполнения!")
             return
 
-        self.close_add_meditation_popup()
-        if hasattr(self, 'start_meditation_session_ui'):
-            self.start_meditation_session_ui(99, title, int(duration))
+        # 2. Проверка расширения файла (строго WAV)
+        if not filename.lower().endswith('.wav'):
+            print("[КОНСТРУКТОР] Ошибка: Поддерживаются только файлы в формате .wav!")
+            return
 
-# САМЫЙ КОНЕЦ ТВОЕГО ФАЙЛА APP.PY
+        # 3. Проверка физического наличия трека в папке audio
+        full_audio_path = os.path.join(AUDIO_DIR, filename)
+        if not os.path.exists(full_audio_path):
+            print(f"[КОНСТРУКТОР] Ошибка: Файл '{filename}' не найден в папке проекта 'audio/'!")
+            return
+
+        try:
+            # 4. Запись новой медитации в базу данных
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            
+            cursor.execute(
+                "INSERT INTO Meditations (title, duration_min, category, audio_file) VALUES (?, ?, ?, ?)",
+                (title, int(duration), "Пользовательские", filename)
+            )
+            
+            new_meditation_id = cursor.lastrowid
+            conn.commit()
+            conn.close()
+            
+            print(f"[БАЗА ДАННЫХ] Практика успешно сохранена в SQL! ID: {new_meditation_id}")
+            
+            # Закрываем окошко конструктора
+            self.close_add_meditation_popup()
+            
+            # 5. Даем Kivy микропаузу в 0.1 сек через Clock, чтобы UI успел закрыть окно
+            Clock.schedule_once(lambda dt: self.load_meditations_to_ui(), 0.1)
+                
+        except Exception as e:
+            print(f"[БАЗА ДАННЫХ] Ошибка записи кастомной медитации: {e}")
+
+    def load_meditations_to_ui(self):
+        """Прямой поиск контейнера по структуре виджетов KivyMD (С точечной поштучной очисткой)"""
+        if not self.root:
+            return
+            
+        container = None
+        
+        # Перебираем виджеты, чтобы найти вкладку 'screen_home'
+        for widget in self.root.walk():
+            if hasattr(widget, 'name') and widget.name == 'screen_home':
+                for child in widget.walk():
+                    if child.__class__.__name__ == 'MDBoxLayout' and child.orientation == 'vertical':
+                        container = child
+                        break
+                if container:
+                    break
+
+        if not container:
+            print("[UI МЕДИТАЦИЙ] Вкладка еще не инициализирована. Отрисовка отложена до клика на вкладку.")
+            return
+
+        # ИСПРАВЛЕНО: Теперь жестко и поштучно удаляем виджеты с индексом, без крашей!
+        while len(container.children) > 2:
+            container.remove_widget(container.children[0])
+
+        try:
+            # Читаем данные из базы данных
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            cursor.execute("SELECT id, title, duration_min, category, audio_file FROM Meditations")
+            rows = cursor.fetchall()
+            conn.close()
+
+            from kivymd.uix.boxlayout import MDBoxLayout
+            from kivymd.uix.button import MDIconButton, MDRaisedButton
+            from kivymd.uix.label import MDLabel
+            from kivy.graphics import Color, Line
+
+            for row in rows:
+                med_id, title, duration, category, audio_file = row
+                
+                icon_name = "weather-sunset"
+                icon_color = [0.9, 0.6, 0.2, 1]
+                if category == "Тревога":
+                    icon_name = "brain"
+                    icon_color = [0.2, 0.6, 0.8, 1]
+                elif category == "Сон":
+                    icon_name = "bed"
+                    icon_color = [0.4, 0.3, 0.7, 1]
+                elif category == "Пользовательские":
+                    icon_name = "account-heart"
+                    icon_color = [0.0, 0.5, 0.5, 1]
+
+                card = MDBoxLayout(
+                    orientation='horizontal',
+                    padding="16dp",
+                    spacing="12dp",
+                    size_hint_y=None,
+                    height="100dp",
+                    md_bg_color=[1, 1, 1, 1]
+                )
+                
+                with card.canvas.before:
+                    Color(0.88, 0.9, 0.92, 1)
+                    card.line = Line(width=1, rounded_rectangle=(card.x, card.y, card.width, card.height, 12, 12, 12, 12))
+                
+                def update_rect(instance, value):
+                    instance.canvas.before.clear()
+                    with instance.canvas.before:
+                        Color(0.88, 0.9, 0.92, 1)
+                        Line(width=1, rounded_rectangle=(instance.x, instance.y, instance.width, instance.height, 12, 12, 12, 12))
+                card.bind(pos=update_rect, size=update_rect)
+
+                icon_btn = MDIconButton(
+                    icon=icon_name, theme_text_color="Custom", text_color=icon_color,
+                    user_font_size="32sp", pos_hint={"center_y": .5}
+                )
+                
+                text_box = MDBoxLayout(orientation='vertical', spacing="4dp", pos_hint={"center_y": .5})
+                text_box.add_widget(MDLabel(text=title, bold=True, font_style="Subtitle1"))
+                text_box.add_widget(MDLabel(text=f"Длительность: {duration} мин • {category}", font_style="Caption", theme_text_color="Secondary"))
+
+                # Контейнер для кнопок управления справа
+                actions_box = MDBoxLayout(orientation='horizontal', spacing="4dp", size_hint_x=None, width="140dp", pos_hint={"center_y": .5})
+
+                # Кнопка корзины (появляется ТОЛЬКО у пользовательских кастомных практик)
+                if category == "Пользовательские":
+                    delete_btn = MDIconButton(
+                        icon="trash-can-outline",
+                        theme_text_color="Custom",
+                        text_color=[0.8, 0.2, 0.2, 1],
+                        user_font_size="24sp",
+                        pos_hint={"center_y": .5},
+                        on_release=lambda x, m_id=med_id: self.delete_meditation_from_db(m_id)
+                    )
+                    actions_box.add_widget(delete_btn)
+
+                start_btn = MDRaisedButton(
+                    text="СТАРТ", md_bg_color=[0.0, 0.5, 0.5, 1], pos_hint={"center_y": .5},
+                    on_release=lambda x, m_id=med_id, t=title, d=duration: self.start_meditation_session_ui(m_id, t, int(d))
+                )
+                actions_box.add_widget(start_btn)
+
+                card.add_widget(icon_btn)
+                card.add_widget(text_box)
+                card.add_widget(actions_box)
+                container.add_widget(card)
+                
+            print(f"[UI МЕДИТАЦИЙ] Успешно отрисовано практик напрямую в вкладку: {len(rows)}")
+
+        except Exception as e:
+            print(f"[UI МЕДИТАЦИЙ] Ошибка динамической сборки: {e}")
+
+    def delete_meditation_from_db(self, med_id):
+        """Полное удаление кастомной практики из SQLite и мгновенное обновление UI"""
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM Meditations WHERE id = ?", (med_id,))
+            conn.commit()
+            conn.close()
+            print(f"[БАЗА ДАННЫХ] Практика с ID {med_id} успешно удалена!")
+            
+            # Принудительно перерисовываем интерфейс, чтобы карточка исчезла
+            self.load_meditations_to_ui()
+        except Exception as e:
+            print(f"[БАЗА ДАННЫХ] Ошибка удаления практики: {e}")
+
+# САМЫЙ КОНЕЦ ФАЙЛА APP.PY
 if __name__ == '__main__':
     PlayerMindApp().run()
+
+
+
+
+
+
+

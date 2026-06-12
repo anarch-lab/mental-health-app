@@ -224,7 +224,7 @@ ScreenManager:
                                     # Вызываем наше отдельное окно, не ломая практику дыхания
                                     on_release: app.open_add_meditation_window()
 
-                # Вкладка 2: Трекер настроения
+# Вкладка 2: Трекер настроения
                 MDBottomNavigationItem:
                     name: 'screen_tracker'
                     text: 'Настроение'
@@ -235,55 +235,75 @@ ScreenManager:
                         orientation: 'vertical'
                         padding: "20dp"
                         spacing: "15dp"
+                        md_bg_color: [0.96, 0.97, 0.98, 1]
 
                         MDLabel:
-                            text: "Как вы себя чувствуете?"
+                            text: "Оцените ваше текущее состояние"
                             font_style: "H6"
+                            bold: True
                             halign: "center"
                             size_hint_y: None
                             height: "40dp"
+                            theme_text_color: "Secondary"
 
+                        # Цветная интерактивная панель выбора настроения
                         MDBoxLayout:
                             orientation: 'horizontal'
-                            spacing: "10dp"
+                            spacing: "15dp"
                             size_hint_y: None
-                            height: "50dp"
+                            height: "60dp"
                             pos_hint: {"center_x": .5}
 
                             MDIconButton:
-                                icon: "numeric-1-circle"
+                                icon: "emoticon-sad-outline" # Ужасно (Стресс)
+                                theme_text_color: "Custom"
+                                text_color: [0.8, 0.2, 0.2, 1] # Красный
+                                user_font_size: "36sp"
                                 on_release: app.select_mood_score(1)
 
                             MDIconButton:
-                                icon: "numeric-2-circle"
+                                icon: "emoticon-neutral-outline" # Плохо
+                                theme_text_color: "Custom"
+                                text_color: [0.9, 0.5, 0.2, 1] # Оранжевый
+                                user_font_size: "36sp"
                                 on_release: app.select_mood_score(2)
 
                             MDIconButton:
-                                icon: "numeric-3-circle"
+                                icon: "emoticon-confused-outline" # Нормально
+                                theme_text_color: "Custom"
+                                text_color: [0.7, 0.7, 0.2, 1] # Желтый
+                                user_font_size: "36sp"
                                 on_release: app.select_mood_score(3)
 
                             MDIconButton:
-                                icon: "numeric-4-circle"
+                                icon: "emoticon-happy-outline" # Хорошо
+                                theme_text_color: "Custom"
+                                text_color: [0.2, 0.6, 0.4, 1] # Салатовый
+                                user_font_size: "36sp"
                                 on_release: app.select_mood_score(4)
 
                             MDIconButton:
-                                icon: "numeric-5-circle"
+                                icon: "emoticon-excited-outline" # Отлично!
+                                theme_text_color: "Custom"
+                                text_color: [0.1, 0.6, 0.3, 1] # Зеленый
+                                user_font_size: "36sp"
                                 on_release: app.select_mood_score(5)
 
                         MDTextField:
                             id: mood_note_input
-                            hint_text: "Добавьте заметку к вашему состоянию..."
+                            hint_text: "Что вы сейчас чувствуете? (Заметка к состоянию)..."
                             mode: "rectangle"
                             size_hint_y: None
-                            height: "50dp"
+                            height: "55dp"
 
                         MDRaisedButton:
-                            text: "СОХРАНИТЬ ЗАМЕР"
+                            text: "СОХРАНИТЬ ЗАМЕР НАСТРОЕНИЯ"
                             md_bg_color: [0.0, 0.5, 0.5, 1]
                             pos_hint: {"center_x": .5}
                             on_release:
                                 app.save_mood_entry_from_ui(mood_note_input.text, main_manager)
                                 mood_note_input.text = ""
+
 
                 # Вкладка 3: Аналитический профиль и графики
                 MDBottomNavigationItem:
