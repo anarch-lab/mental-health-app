@@ -397,7 +397,7 @@ class PlayerMindApp(MDApp):
                 icon_widget.icon = "robot-happy"           # Робот улыбается!
                 icon_widget.text_color = [0.2, 0.6, 0.3, 1] # Зеленоватая иконка
 
-            # === МФ2: ИСПРАВЛЕННЫЙ МОДУЛЬ ДИНАМИЧЕСКОЙ ОТРИСОВКИ ГРАФИКА ===
+# === МФ2: ИСПРАВЛЕННЫЙ МОДУЛЬ ДИНАМИЧЕСКОЙ ОТРИСОВКИ ГРАФИКА ===
     def draw_analytics_chart(self, root_manager):
         """Безопасная отрисовка графика, привязанная к реальным размерам виджета на экране"""
         if not hasattr(root_manager, 'ids') or 'chart_canvas_box' not in root_manager.ids:
@@ -422,17 +422,22 @@ class PlayerMindApp(MDApp):
 
         # Извлечение актуального тренда из SQLite с распаковкой кортежей
         try:
-            conn = sqlite3.connect(DB_NAME)
+            # ИСПРАВЛЕНО: Подключаемся к правильной глобальной DB_PATH
+            conn = sqlite3.connect(DB_PATH)
             cursor = conn.cursor()
             cursor.execute("SELECT score FROM Mood_Tracker ORDER BY id DESC LIMIT 7")
             rows = cursor.fetchall()
             conn.close()
+            
             # Достаем чистые инты (row[0]) из кортежей базы
-            chart_data = [row[0] for row in reversed(rows)] if rows else [3, 4, 2, 5, 4, 3, 5]
-            while len(chart_data) < 7:
-                chart_data.insert(0, 0)
-        except Exception:
-            chart_data = [3, 4, 2, 5, 4, 3, 5]
+            chart_data = [row[0] for row in reversed(rows)] if rows else []
+        except Exception as e:
+            print(f"[ГРАФИК ОШИБКА] Не удалось прочитать Mood_Tracker: {e}")
+            chart_data = []
+
+        # Если в базе вообще нет замеров, показываем одну легкую заглушку-подсказку
+        if not chart_data:
+            chart_data = [3] 
 
         # Отрисовка на низкоуровневом Canvas
         with box.canvas.before:
@@ -440,34 +445,45 @@ class PlayerMindApp(MDApp):
             Color(0.92, 0.94, 0.95, 1)
             Rectangle(pos=box.pos, size=box.size)
             
-            padding_x = 40  # Увеличили боковые отступы, чтобы график не прилипал к краям
-            padding_y = 20  # Увеличили нижний отступ
+            padding_x = 40  # Боковые отступы
+            padding_y = 20  # Нижний отступ
             available_w = box.width - (padding_x * 2)
             available_h = box.height - (padding_y * 2) - 10
             
-            # Сделали фиксированные зазоры между столбцами побольше (20dp вместо 10dp)
+            # Динамически считаем зазоры в зависимости от реального количества замеров в базе
+            total_items = len(chart_data)
             spacing = 20 
-            col_width = (available_w - (spacing * 6)) / 7
             
+            if total_items > 1:
+                col_width = (available_w - (spacing * (total_items - 1))) / total_items
+            else:
+                col_width = 40 # Если замер один, делаем фиксированную ширину
+                
             # Ограничили максимальную ширину столбца, чтобы они не становились огромными
             if col_width > 24:
                 col_width = 24
-                # Центрируем весь блок столбцов, если они зажаты максимальной шириной
-                total_graph_w = (col_width * 7) + (spacing * 6)
+                # Центрируем блок столбцов на экране
+                total_graph_w = (col_width * total_items) + (spacing * (total_items - 1) if total_items > 1 else 0)
                 padding_x = (box.width - total_graph_w) / 2
 
             max_score = 5.0
             
             for i, val in enumerate(chart_data):
-                # Рассчитываем координату X с учетом увеличенных зазоров
+                # Рассчитываем координату X для каждого живого столбца
                 col_x = box.x + padding_x + i * (col_width + spacing)
                 col_y = box.y + padding_y
                 
                 ratio = val / max_score if val > 0 else 0.05
                 col_h = available_h * ratio
                 
-                # Делаем цвет чуть более стильным (бирюзовый с легкой прозрачностью)
-                Color(0.0, 0.5 * (val / 5.0 if val > 0 else 0.4), 0.5, 0.85)
+                # Подбираем цвет динамически: красный для стресса (1), зеленый для отличного (5)
+                if val <= 2:
+                    Color(0.8, 0.2, 0.2, 0.85) # Красный столбец
+                elif val == 3:
+                    Color(0.7, 0.7, 0.2, 0.85) # Желтый столбец
+                else:
+                    Color(0.1, 0.6, 0.3, 0.85) # Зеленый столбец
+                    
                 Rectangle(pos=(col_x, col_y), size=(col_width, col_h))
 
         # Подписываем виджет на изменение размеров и позиций (чтобы график не пропадал)
@@ -478,6 +494,7 @@ class PlayerMindApp(MDApp):
         if hasattr(self, 'root') and self.root:
             # Перерисовываем график, используя ссылку на корневой менеджер
             self.draw_analytics_chart(self.root)
+
 
 
     # === МФ3: ИНТЕРАКТИВНЫЙ ДЫХАТЕЛЬНЫЙ ТРЕНАЖЕР ===
@@ -607,23 +624,166 @@ MDBoxLayout:
 
 # === КЛАССИЧЕСКИЙ СТАНДАРТНЫЙ ПЛЕЕР МЕДИТАЦИЙ ===
     def select_mood_score(self, score):
-        # Используем self.selected_score для совместимости с твоим кодом
+        """Вызывается при клике на смайлик. Фиксирует оценку и меняет статус-бар"""
         self.selected_score = score
         print(f"[Mood Selected] Оценка: {score}")
+        
+        hint_label = None
+        if self.root:
+            for widget in self.root.walk():
+                # 1. Проверяем точный ID
+                if hasattr(widget, 'id') and widget.id == 'mood_status_hint':
+                    hint_label = widget
+                    break
+                # 2. ИСПРАВЛЕНО: Резервный поиск по типу виджета и любому из возможных текстов
+                if widget.__class__.__name__ == 'MDLabel' and hasattr(widget, 'text'):
+                    if "Статус:" in widget.text or "Выбрано состояние:" in widget.text:
+                        hint_label = widget
+                        break
+
+        if hint_label:
+            status_labels = {
+                1: "Выбрано состояние: Критический стресс / Тревога 😰",
+                2: "Выбрано состояние: Пониженный тонус / Плохо 😐",
+                3: "Выбрано состояние: Стабильно / Нормально 😑",
+                4: "Выбрано состояние: Хороший эмоциональный фон 🙂",
+                5: "Выбрано состояние: Отличный баланс / Супер! 😊"
+            }
+            hint_label.text = status_labels.get(score, "")
+            print(f"[UI НАСТРОЕНИЯ] Статус-бар успешно переключен на оценку {score}")
+        else:
+            print("[UI НАСТРОЕНИЯ ОШИБКА] Не удалось физически найти mood_status_hint на экране.")
 
     def save_mood_entry_from_ui(self, note_text, root_manager):
         if not hasattr(self, 'selected_score') or self.selected_score is None:
             print("[НАСТРОЕНИЕ] Ошибка: Сначала выберите смайлик!")
             return
             
-        # Пишем в базу данных
         add_mood_record(self.selected_score, note_text)
         self.refresh_profile_data_direct(root_manager)
         
-        # Обновление ИИ и Графика после добавления новой записи
         self.update_ai_recommendation(self.selected_score, root_manager)
         self.draw_analytics_chart(root_manager)
+        
+        # ИСПРАВЛЕНО: Теперь при сохранении сразу пересчитываем Паспорт Дня
+        self.update_today_mood_stats_ui()
+        self.reset_mood_ui_selection()
+
+    def reset_mood_ui_selection(self):
+        """Сбрасывает выбор смайлика и очищает статус-бар на экране"""
         self.selected_score = None
+        
+        hint_label = None
+        if self.root:
+            for widget in self.root.walk():
+                if hasattr(widget, 'id') and widget.id == 'mood_status_hint':
+                    hint_label = widget
+                    break
+                if widget.__class__.__name__ == 'MDLabel' and hasattr(widget, 'text'):
+                    if "Выбрано состояние:" in widget.text or "Статус:" in widget.text:
+                        hint_label = widget
+                        break
+
+        if hint_label:
+            hint_label.text = "Статус: Состояние не выбрано"
+        print("[UI НАСТРОЕНИЯ] Выбор успешно сброшен")
+
+    def update_today_mood_stats_ui(self):
+        """Считает замеры за все время в SQLite и обновляет паспорт дня на экране"""
+        if not self.root:
+            return
+
+        today_count = 0
+        today_avg = 0.0
+
+        try:
+            # Вытягиваем все оценки из твоей таблицы Mood_Tracker
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            cursor.execute("SELECT score FROM Mood_Tracker")
+            rows = cursor.fetchall()
+            conn.close()
+
+            if rows:
+                today_count = len(rows)
+                # Твой крутой фикс с распаковкой кортежа r[0]
+                today_avg = sum([r[0] for r in rows]) / today_count
+        except Exception as e:
+            print(f"[БАЗА ДАННЫХ] Ошибка подсчета статистики трекера: {e}")
+
+        # Находим наши новые текстовые строки на экране через walk()
+        lbl_count = None
+        lbl_avg = None
+        
+        for widget in self.root.walk():
+            if hasattr(widget, 'id'):
+                if widget.id == 'mood_stats_today_count':
+                    lbl_count = widget
+                elif widget.id == 'mood_stats_today_avg':
+                    lbl_avg = widget
+            if lbl_count and lbl_avg:
+                break
+
+        # Выводим живые цифры на экран
+        if lbl_count:
+            lbl_count.text = f"Всего замеров в системе: {today_count}"
+        if lbl_avg:
+            if today_count > 0:
+                lbl_avg.text = f"Средний тонус настроения: {today_avg:.1f} / 5.0"
+            else:
+                lbl_avg.text = f"Средний тонус настроения: --"
+
+
+    def update_today_mood_stats_ui(self):
+        """Считает замеры за все время в SQLite и принудительно обновляет паспорт дня на экране"""
+        if not self.root:
+            return
+
+        today_count = 0
+        today_avg = 0.0
+
+        try:
+            # Читаем данные из базы SQLite
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            cursor.execute("SELECT score FROM Mood_Tracker")
+            rows = cursor.fetchall()
+            conn.close()
+
+            if rows:
+                today_count = len(rows)
+                # Твой крутой фикс с распаковкой кортежа r[0]
+                today_avg = sum([r[0] for r in rows]) / today_count
+        except Exception as e:
+            print(f"[БАЗА ДАННЫХ] Ошибка подсчета статистики трекера: {e}")
+
+        # ЖЕЛЕЗОБЕТОННЫЙ ПОИСК: Прочесываем оперативку по тексту, обходя баги с ID
+        lbl_count = None
+        lbl_avg = None
+        
+        for widget in self.root.walk():
+            if widget.__class__.__name__ == 'MDLabel' and hasattr(widget, 'text'):
+                # Ищем по ключевым словам в тексте виджетов
+                if "замеров" in widget.text.lower():
+                    lbl_count = widget
+                elif "тонус" in widget.text.lower() or "сутки" in widget.text.lower():
+                    lbl_avg = widget
+            if lbl_count and lbl_avg:
+                break
+
+        # Принудительно вгружаем живые цифры прямо в интерфейс Kivy
+        if lbl_count:
+            lbl_count.text = f"Всего замеров в системе: {today_count}"
+            print("[UI НАСТРОЕНИЯ] Обновлен счетчик замеров.")
+        if lbl_avg:
+            if today_count > 0:
+                lbl_avg.text = f"Средний тонус настроения: {today_avg:.1f} / 5.0"
+                print("[UI НАСТРОЕНИЯ] Обновлен средний балл тонуса.")
+            else:
+                lbl_avg.text = f"Средний тонус настроения: --"
+
+
+
 
     def start_meditation_session_ui(self, med_id, title, duration_min):
         self.current_med_id = med_id
@@ -747,6 +907,9 @@ MDBoxLayout:
         # и пробуем сразу подгрузить кастомные практики из SQLite
         from kivy.clock import Clock
         Clock.schedule_once(lambda dt: self.load_meditations_to_ui(), 0.3)
+        
+        # ДОБАВЛЕНО: Загружаем статистику настроения через 0.4 секунды после старта
+        Clock.schedule_once(lambda dt: self.update_today_mood_stats_ui(), 0.4)
 
     # === МЕТОДЫ ДЛЯ ДИПЛОМА: ОТДЕЛЬНОЕ ОКНО КОНСТРУКТОРА ПРАКТИК ===
     def open_add_meditation_window(self):

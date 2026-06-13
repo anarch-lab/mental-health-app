@@ -257,37 +257,47 @@ ScreenManager:
                             MDIconButton:
                                 icon: "emoticon-sad-outline" # Ужасно (Стресс)
                                 theme_text_color: "Custom"
-                                text_color: [0.8, 0.2, 0.2, 1] # Красный
+                                text_color: [0.8, 0.2, 0.2, 1]
                                 user_font_size: "36sp"
                                 on_release: app.select_mood_score(1)
 
                             MDIconButton:
                                 icon: "emoticon-neutral-outline" # Плохо
                                 theme_text_color: "Custom"
-                                text_color: [0.9, 0.5, 0.2, 1] # Оранжевый
+                                text_color: [0.9, 0.5, 0.2, 1]
                                 user_font_size: "36sp"
                                 on_release: app.select_mood_score(2)
 
                             MDIconButton:
                                 icon: "emoticon-confused-outline" # Нормально
                                 theme_text_color: "Custom"
-                                text_color: [0.7, 0.7, 0.2, 1] # Желтый
+                                text_color: [0.7, 0.7, 0.2, 1]
                                 user_font_size: "36sp"
                                 on_release: app.select_mood_score(3)
 
                             MDIconButton:
                                 icon: "emoticon-happy-outline" # Хорошо
                                 theme_text_color: "Custom"
-                                text_color: [0.2, 0.6, 0.4, 1] # Салатовый
+                                text_color: [0.2, 0.6, 0.4, 1]
                                 user_font_size: "36sp"
                                 on_release: app.select_mood_score(4)
 
                             MDIconButton:
                                 icon: "emoticon-excited-outline" # Отлично!
                                 theme_text_color: "Custom"
-                                text_color: [0.1, 0.6, 0.3, 1] # Зеленый
+                                text_color: [0.1, 0.6, 0.3, 1]
                                 user_font_size: "36sp"
                                 on_release: app.select_mood_score(5)
+
+                        # ДОБАВЛЕНО: Интерактивный статус-бар текущего выбора
+                        MDLabel:
+                            id: mood_status_hint
+                            text: "Статус: Состояние не выбрано"
+                            font_style: "Subtitle2"
+                            halign: "center"
+                            size_hint_y: None
+                            height: "30dp"
+                            theme_text_color: "Hint"
 
                         MDTextField:
                             id: mood_note_input
@@ -296,14 +306,55 @@ ScreenManager:
                             size_hint_y: None
                             height: "55dp"
 
-                        MDRaisedButton:
-                            text: "СОХРАНИТЬ ЗАМЕР НАСТРОЕНИЯ"
-                            md_bg_color: [0.0, 0.5, 0.5, 1]
+                        # Кнопки управления замер / сброс
+                        MDBoxLayout:
+                            orientation: 'horizontal'
+                            spacing: "15dp"
+                            size_hint_y: None
+                            height: "45dp"
                             pos_hint: {"center_x": .5}
-                            on_release:
-                                app.save_mood_entry_from_ui(mood_note_input.text, main_manager)
-                                mood_note_input.text = ""
 
+                            MDRaisedButton:
+                                text: "СОХРАНИТЬ ЗАМЕР"
+                                md_bg_color: [0.0, 0.5, 0.5, 1]
+                                on_release:
+                                    app.save_mood_entry_from_ui(mood_note_input.text, main_manager)
+                                    mood_note_input.text = ""
+
+                            MDFlatButton:
+                                text: "СБРОСИТЬ"
+                                theme_text_color: "Custom"
+                                text_color: [0.6, 0.6, 0.6, 1]
+                                on_release:
+                                    app.reset_mood_ui_selection()
+                                    mood_note_input.text = ""
+                        # ДОБАВЛЕНО ДЛЯ ПЛОТНОСТИ: Эмоциональный паспорт дня
+                        MDBoxLayout:
+                            orientation: 'vertical'
+                            padding: "12dp"
+                            spacing: "6dp"
+                            size_hint_y: None
+                            height: "85dp"
+                            md_bg_color: [1, 1, 1, 1] # Белая карточка на сером фоне
+                            canvas.before:
+                                Color:
+                                    rgba: [0.88, 0.9, 0.92, 1]
+                                Line:
+                                    width: 1
+                                    rounded_rectangle: (self.x, self.y, self.width, self.height, 8, 8, 8, 8)
+
+                            MDLabel:
+                                id: mood_stats_today_count
+                                text: "Замеров сегодня: 0"
+                                font_style: "Body2"
+                                theme_text_color: "Secondary"
+
+                            MDLabel:
+                                id: mood_stats_today_avg
+                                text: "Средний тонус за сутки: --"
+                                font_style: "Body2"
+                                bold: True
+                                theme_text_color: "Primary"
 
                 # Вкладка 3: Аналитический профиль и графики
                 MDBottomNavigationItem:
