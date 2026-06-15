@@ -28,6 +28,7 @@ from kivy.properties import NumericProperty
 
 
 # Статическая разметка Popup-плеера
+# Статическая разметка Popup-плеера
 POPUP_KV = '''
 MDBoxLayout:
     orientation: 'vertical'
@@ -64,6 +65,30 @@ MDBoxLayout:
         MDFlatButton:
             text: "ЗАКРЫТЬ"
             on_press: app.close_player_popup_request()
+
+    # ДОБАВЛЕНО ДЛЯ ДИПЛОМА: Ползунок плавной регулировки громкости
+    MDBoxLayout:
+        orientation: 'horizontal'
+        spacing: "10dp"
+        size_hint_y: None
+        height: "40dp"
+        padding: ["10dp", 0, "10dp", 0]
+
+        MDIcon:
+            icon: "volume-high"
+            size_hint_x: None
+            width: "24dp"
+            theme_text_color: "Secondary"
+
+        MDSlider:
+            id: volume_slider
+            min: 0
+            max: 1
+            value: 0.8  # Громкость по умолчанию (80%)
+            hint: True
+            hint_bg_color: [0.0, 0.5, 0.5, 1]
+            color: [0.0, 0.5, 0.5, 1]
+            on_value: app.change_volume_ui(self.value)
 '''
 
 # Разметка окна подтверждения прерывания медитации
@@ -302,6 +327,10 @@ class PlayerMindApp(MDApp):
         self.breath_seconds = 4
         self.current_phase_index = 0
         self.breath_phases = ["ВДОХ (Расширение)", "ЗАДЕРЖКА", "ВЫДОХ (Сужение)", "ЗАДЕРЖКА"]
+        
+        #Уровень громкости по умолчанию (80%)
+        self.current_volume_level = 0.8
+
 
     def build(self):
         from kivy.core.window import Window
@@ -783,13 +812,20 @@ MDBoxLayout:
                 lbl_avg.text = f"Средний тонус настроения: --"
 
 
-
-
     def start_meditation_session_ui(self, med_id, title, duration_min):
         self.current_med_id = med_id
         self.time_left_seconds = int(duration_min) * 60
         self.timer_active = False
         
+        # Если в памяти висит старый звук, глушим его намертво перед загрузкой нового
+        if hasattr(self, 'current_sound') and self.current_sound:
+            try:
+                self.current_sound.stop()
+                self.current_sound.unload() 
+            except Exception:
+                pass
+            self.current_sound = None 
+
         popup_content = Builder.load_string(POPUP_KV)
         popup_content.ids.title_display.text = f"Практика: {title}"
         
@@ -800,6 +836,10 @@ MDBoxLayout:
         self.popup_label = popup_content.ids.timer_display
         self.btn_play_pause = popup_content.ids.play_pause_btn
         
+        # Выставляем положение ползунка на экране (80%)
+        if 'volume_slider' in popup_content.ids:
+            popup_content.ids.volume_slider.value = self.current_volume_level
+        
         self.popup = Popup(
             title="Медиаплеер сессии",
             content=popup_content,
@@ -808,33 +848,51 @@ MDBoxLayout:
         )
         self.popup.open()
         
-        # === УМНЫЙ ПОДБОР ФАЙЛА ИЗ SQLITE (БЕЗ КОСТЫЛЕЙ) ===
+        # === УМНЫЙ ПОДБОР ФАЙЛА ИЗ SQLITE ===
         audio_filename = None
         try:
-            # Вытягиваем точное имя .wav файла из базы по ID медитации
             conn = sqlite3.connect(DB_PATH)
             cursor = conn.cursor()
             cursor.execute("SELECT audio_file FROM Meditations WHERE id = ?", (med_id,))
             row = cursor.fetchone()
             conn.close()
-            if row:
+            if row and row[0]:
                 audio_filename = row[0]
         except Exception as db_err:
             print(f"[БАЗА ДАННЫХ] Не удалось узнать имя файла для медитации: {db_err}")
 
-        # Если в базе пусто (старая запись), делаем откат на имя по умолчанию
-        if not audio_filename:
+        # Проверяем, существует ли файл, имя которого пришло из базы
+        sound_path = os.path.join(AUDIO_DIR, audio_filename) if audio_filename else ""
+        
+        # УМНЫЙ ОТКАТ ДЛЯ ДИПЛОМА: Если файл из базы не найден или пуст, ищем дефолтный med_X.wav
+        if not audio_filename or not os.path.exists(sound_path):
             audio_filename = f"med_{med_id}.wav"
+            sound_path = os.path.join(AUDIO_DIR, audio_filename)
+            print(f"[ПЛЕЕР ИНФО] Откат на стандартное имя: {audio_filename}")
 
-        # Формируем универсальный путь через AUDIO_DIR
-        sound_path = os.path.join(AUDIO_DIR, audio_filename)
+        print(f"[ОТЛАДКА] Плеер ищет файл по пути: {sound_path}")
         
         if os.path.exists(sound_path):
             from kivy.core.audio import SoundLoader
             self.current_sound = SoundLoader.load(sound_path)
-            print(f"[ПЛЕЕР] Успешно загружен файл из базы: {audio_filename}")
+            
+            if self.current_sound:
+                self.current_sound.volume = self.current_volume_level
+                
+            print(f"[ПЛЕЕР] Успешно загружен и готов к старту: {audio_filename}")
         else:
-            print(f"[ОШИБКА ПЛЕЕРА] Файл не найден по пути: {sound_path}")
+            print(f"[ОШИБКА ПЛЕЕРА] Файл не найден на диске даже после отката: {sound_path}")
+
+    def change_volume_ui(self, value):
+        """Динамически изменяет громкость текущего воспроизводимого трека"""
+        print(f"[ПЛЕЕР] Изменение громкости: {value:.2f}")
+        try:
+            if hasattr(self, 'current_sound') and self.current_sound:
+                self.current_sound.volume = float(value)
+            self.current_volume_level = float(value)
+        except Exception as e:
+            print(f"[ПЛЕЕР ОШИБКА] Не удалось изменить громкость звука: {e}")
+
 
     def toggle_timer(self):
         if not self.timer_active:
