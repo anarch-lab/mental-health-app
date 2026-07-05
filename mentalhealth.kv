@@ -209,20 +209,7 @@ ScreenManager:
                                     pos_hint: {"center_y": .5}
                                     on_release: app.start_meditation_session_ui(3, "Глубокий сон", 20)
 
-                            # === ФИЧА ДЛЯ ДИПЛОМА: ОТДЕЛЬНАЯ КНОПКА ОТКРЫТИЯ КОНСТРУКТОРА ПРАКТИК ===
-                            MDBoxLayout:
-                                orientation: 'vertical'
-                                padding: ["16dp", "10dp", "16dp", "10dp"]
-                                size_hint_y: None
-                                height: "70dp"
-                                
-                                MDRaisedButton:
-                                    text: "➕ КОНСТРУКТОР СОБСТВЕННЫХ ПРАКТИК"
-                                    md_bg_color: [0.0, 0.5, 0.5, 1]
-                                    pos_hint: {"center_x": .5}
-                                    size_hint_x: 1
-                                    # Вызываем наше отдельное окно, не ломая практику дыхания
-                                    on_release: app.open_add_meditation_window()
+
 
 # Вкладка 2: Трекер настроения
                 MDBottomNavigationItem:
@@ -289,7 +276,7 @@ ScreenManager:
                                 user_font_size: "36sp"
                                 on_release: app.select_mood_score(5)
 
-                        # ДОБАВЛЕНО: Интерактивный статус-бар текущего выбора
+                        # Интерактивный статус-бар текущего выбора
                         MDLabel:
                             id: mood_status_hint
                             text: "Статус: Состояние не выбрано"
@@ -297,7 +284,8 @@ ScreenManager:
                             halign: "center"
                             size_hint_y: None
                             height: "30dp"
-                            theme_text_color: "Hint"
+                            theme_text_color: "Custom"  # ИСПРАВЛЕНО: перевели в Custom
+                            text_color: [0.5, 0.5, 0.5, 1]  # Серый по умолчанию
 
                         MDTextField:
                             id: mood_note_input

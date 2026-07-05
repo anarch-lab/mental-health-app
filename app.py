@@ -263,41 +263,44 @@ def get_mood_history():
 
 # 4. КЛАССЫ ЭКРАНОВ
 class HomeScreen(MDScreen):
-    def on_enter(self, *args):
-        """Автоматическая проверка и динамическая загрузка при входе на экран медитаций"""
-        from kivy.app import App
-        app = App.get_running_app()
-        
-        # 1. ПРИНУДИТЕЛЬНО ОБНОВЛЯЕМ СПИСОК ПРАКТИК ИЗ БАЗЫ ДАННЫХ ПРИ ВХОДЕ
-        if hasattr(app, 'load_meditations_to_ui'):
-            app.load_meditations_to_ui()
-
-        # 2. Логика программного создания кнопки «+» (твой оригинальный код)
-        if not hasattr(self, 'add_custom_btn_created'):
-            from kivymd.uix.button import MDFloatingActionButton
-            
-            # Создаем красивую парящую круглую кнопку «+» в правом нижнем углу экрана медитаций
-            add_btn = MDFloatingActionButton(
-                icon="plus",
-                md_bg_color=[0.0, 0.5, 0.5, 1],
-                icon_color=[1, 1, 1, 1],
-                pos_hint={"right": 0.95, "bottom": 0.05},
-                size_hint=(None, None),
-                size=("56dp", "56dp")
-            )
-            # Привязываем клик на кнопку к открытию нашего нового отдельного окна
-            add_btn.bind(on_release=lambda x: app.open_add_meditation_window())
-            
-            # Добавляем её на живой экран медитаций поверх всей твоей готовой верстки
-            self.add_widget(add_btn)
-            self.add_custom_btn_created = True
-            print("Дипломный модуль: Программная кнопка добавления практик успешно инжектирована.")
+    pass
 
 class TrackerScreen(MDScreen):
     pass
 
 class ProfileScreen(MDScreen):
     pass
+
+# ЖЕЛЕЗОБЕТОННЫЙ ИНЖЕКТ ДЛЯ ДИПЛОМА: Вешаем парящий плюсик прямо на экран медитаций!
+class MeditationsScreen(MDScreen):
+    def on_enter(self, *args):
+        """Автоматически создаёт парящий плюс при входе на экран медитаций"""
+        from kivy.app import App
+        app = App.get_running_app()
+        
+        # 1. Принудительно обновляем список практик из базы данных
+        if hasattr(app, 'load_meditations_to_ui'):
+            app.load_meditations_to_ui()
+
+        # 2. Создаем неубиваемую круглую кнопку «+» поверх верстки
+        if not hasattr(self, 'add_custom_btn_created'):
+            from kivymd.uix.button import MDFloatingActionButton
+            
+            # Создаем красивую бирюзовую кнопку, приподняв её над нижним меню (y: 0.12)
+            add_btn = MDFloatingActionButton(
+                icon="plus",
+                md_bg_color=[0.0, 0.5, 0.5, 1],
+                icon_color=[1, 1, 1, 1],
+                pos_hint={"right": 0.95, "y": 0.12}, # Исправили координату высоты!
+                size_hint=(None, None),
+                size=("56dp", "56dp")
+            )
+            # Привязываем клик к нашему графитовому окну конструктора
+            add_btn.bind(on_release=lambda x: app.open_add_meditation_window())
+            
+            self.add_widget(add_btn)
+            self.add_custom_btn_created = True
+            print("[ДИПЛОМ] Парящая кнопка добавления практик успешно выведена на экран медитаций!")
 
 
 
@@ -653,24 +656,21 @@ MDBoxLayout:
 
 # === КЛАССИЧЕСКИЙ СТАНДАРТНЫЙ ПЛЕЕР МЕДИТАЦИЙ ===
     def select_mood_score(self, score):
-        """Вызывается при клике на смайлик. Фиксирует оценку и меняет статус-бар"""
+        """Вызывается при клике на смайлик. Фиксирует оценку, меняет текст и цвет статус-бара в тон ИИ"""
         self.selected_score = score
         print(f"[Mood Selected] Оценка: {score}")
         
         hint_label = None
         if self.root:
             for widget in self.root.walk():
-                # 1. Проверяем точный ID
-                if hasattr(widget, 'id') and widget.id == 'mood_status_hint':
-                    hint_label = widget
-                    break
-                # 2. ИСПРАВЛЕНО: Резервный поиск по типу виджета и любому из возможных текстов
+                # ЖЕЛЕЗОБЕТОННЫЙ ПОИСК: Проверяем тип виджета и наличие ключевых слов в тексте
                 if widget.__class__.__name__ == 'MDLabel' and hasattr(widget, 'text'):
-                    if "Статус:" in widget.text or "Выбрано состояние:" in widget.text:
+                    if "статус:" in widget.text.lower() or "выбрано состояние:" in widget.text.lower():
                         hint_label = widget
                         break
 
         if hint_label:
+            # Тексты статусов
             status_labels = {
                 1: "Выбрано состояние: Критический стресс / Тревога 😰",
                 2: "Выбрано состояние: Пониженный тонус / Плохо 😐",
@@ -678,8 +678,19 @@ MDBoxLayout:
                 4: "Выбрано состояние: Хороший эмоциональный фон 🙂",
                 5: "Выбрано состояние: Отличный баланс / Супер! 😊"
             }
+            
+            # СИНХРОНИЗАЦИЯ: Цвета ИИ с первого экрана (Красный, Оранжевый, Желтый, Салатовый, Зеленый)
+            status_colors = {
+                1: [0.8, 0.2, 0.2, 1],
+                2: [0.9, 0.5, 0.2, 1],
+                3: [0.7, 0.7, 0.2, 1],
+                4: [0.2, 0.6, 0.4, 1],
+                5: [0.1, 0.6, 0.3, 1]
+            }
+            
             hint_label.text = status_labels.get(score, "")
-            print(f"[UI НАСТРОЕНИЯ] Статус-бар успешно переключен на оценку {score}")
+            hint_label.text_color = status_colors.get(score, [0.5, 0.5, 0.5, 1]) # Принудительно красим текст!
+            print(f"[UI НАСТРОЕНИЯ] Статус-бар успешно окрашен в цвет ИИ для оценки {score}")
         else:
             print("[UI НАСТРОЕНИЯ ОШИБКА] Не удалось физически найти mood_status_hint на экране.")
 
@@ -694,7 +705,6 @@ MDBoxLayout:
         self.update_ai_recommendation(self.selected_score, root_manager)
         self.draw_analytics_chart(root_manager)
         
-        # ИСПРАВЛЕНО: Теперь при сохранении сразу пересчитываем Паспорт Дня
         self.update_today_mood_stats_ui()
         self.reset_mood_ui_selection()
 
@@ -705,17 +715,17 @@ MDBoxLayout:
         hint_label = None
         if self.root:
             for widget in self.root.walk():
-                if hasattr(widget, 'id') and widget.id == 'mood_status_hint':
-                    hint_label = widget
-                    break
+                # Точно такой же текстовый поиск при сбросе
                 if widget.__class__.__name__ == 'MDLabel' and hasattr(widget, 'text'):
-                    if "Выбрано состояние:" in widget.text or "Статус:" in widget.text:
+                    if "статус:" in widget.text.lower() or "выбрано состояние:" in widget.text.lower():
                         hint_label = widget
                         break
 
         if hint_label:
             hint_label.text = "Статус: Состояние не выбрано"
+            hint_label.text_color = [0.5, 0.5, 0.5, 1] # Возвращаем серый цвет при сбросе
         print("[UI НАСТРОЕНИЯ] Выбор успешно сброшен")
+
 
     def update_today_mood_stats_ui(self):
         """Считает замеры за все время в SQLite и обновляет паспорт дня на экране"""
@@ -817,6 +827,9 @@ MDBoxLayout:
         self.time_left_seconds = int(duration_min) * 60
         self.timer_active = False
         
+        # ЖЕЛЕЗОБЕТОННЫЙ ФИКС БАГА: Сбрасываем сохраненную позицию паузы для новой практики
+        self.sound_pause_pos = 0.0
+        
         # Если в памяти висит старый звук, глушим его намертво перед загрузкой нового
         if hasattr(self, 'current_sound') and self.current_sound:
             try:
@@ -899,15 +912,38 @@ MDBoxLayout:
             self.timer_active = True
             self.btn_play_pause.text = "ПАУЗА"
             self.timer_event = Clock.schedule_interval(self.update_timer_tick, 1.0)
+            
             if hasattr(self, 'current_sound') and self.current_sound:
-                self.current_sound.play()
+                # Если звук уже запущен и просто "спит" на нулевой громкости
+                if self.current_sound.state == 'play':
+                    # Просто возвращаем его громкость, БЕЗ вызова перезапускающего .play()
+                    if hasattr(self, 'current_volume_level'):
+                        self.current_sound.volume = self.current_volume_level
+                    else:
+                        self.current_sound.volume = 0.8
+                    print("[ПЛЕЕР] Звук плавно возвращен из режима тишины")
+                else:
+                    # Это самый первый старт трека при открытии плеера
+                    if hasattr(self, 'current_volume_level'):
+                        self.current_sound.volume = self.current_volume_level
+                    else:
+                        self.current_sound.volume = 0.8
+                    self.current_sound.play()
+                    print("[ПЛЕЕР] Самый первый запуск аудиопотока")
         else:
             self.timer_active = False
             self.btn_play_pause.text = "СТАРТ"
+            
             if hasattr(self, 'timer_event') and self.timer_event:
                 Clock.unschedule(self.timer_event)
+                
             if hasattr(self, 'current_sound') and self.current_sound:
-                self.current_sound.stop()
+                # ТРЮК С ПАУЗОЙ: оставляем поток жить, но уводим громкость в абсолютный ноль
+                self.current_sound.volume = 0.0
+                print("[ПЛЕЕР] Сессия на паузе (звук временно заглушен)")
+
+
+
 
     def update_timer_tick(self, dt):
         if self.time_left_seconds > 0:
@@ -1239,10 +1275,12 @@ MDBoxLayout:
             return
             
         container = None
+        target_screen = None
         
         # Перебираем виджеты, чтобы найти вкладку 'screen_home'
         for widget in self.root.walk():
             if hasattr(widget, 'name') and widget.name == 'screen_home':
+                target_screen = widget  # Запоминаем сам экран для инжекта кнопки
                 for child in widget.walk():
                     if child.__class__.__name__ == 'MDBoxLayout' and child.orientation == 'vertical':
                         container = child
@@ -1267,9 +1305,26 @@ MDBoxLayout:
             conn.close()
 
             from kivymd.uix.boxlayout import MDBoxLayout
-            from kivymd.uix.button import MDIconButton, MDRaisedButton
+            from kivymd.uix.button import MDIconButton, MDRaisedButton, MDFloatingActionButton
             from kivymd.uix.label import MDLabel
             from kivy.graphics import Color, Line
+
+            # ДОБАВЛЕНО ДЛЯ ДИПЛОМА: Программный инжект неубиваемого парящего плюсика поверх верстки экрана
+            if target_screen and not hasattr(target_screen, 'add_custom_btn_created'):
+                add_btn = MDFloatingActionButton(
+                    icon="plus",
+                    md_bg_color=[0.0, 0.5, 0.5, 1],
+                    icon_color=[1, 1, 1, 1],
+                    pos_hint={"right": 0.95, "y": 0.12}, # Красиво приподняли над нижним навигационным меню
+                    size_hint=(None, None),
+                    size=("56dp", "56dp")
+                )
+                # Привязываем клик к открытию графитового окна конструктора
+                add_btn.bind(on_release=lambda x: self.open_add_meditation_window())
+                
+                target_screen.add_widget(add_btn)
+                target_screen.add_custom_btn_created = True
+                print("[ДИПЛОМ] Парящая кнопка добавления успешно инжектирована на экран.")
 
             for row in rows:
                 med_id, title, duration, category, audio_file = row
@@ -1298,7 +1353,9 @@ MDBoxLayout:
                 with card.canvas.before:
                     Color(0.88, 0.9, 0.92, 1)
                     card.line = Line(width=1, rounded_rectangle=(card.x, card.y, card.width, card.height, 12, 12, 12, 12))
-                
+
+                # Дальнейший твой код отрисовки карточки (кнопки СТАРТ, иконки и лейблы) остается ниже без изменений...
+
                 def update_rect(instance, value):
                     instance.canvas.before.clear()
                     with instance.canvas.before:
